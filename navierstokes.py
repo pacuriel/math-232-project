@@ -59,6 +59,7 @@ def defineGeometry(domain_type='base', maxh=0.07):
                   [["spline3",p7,p8,p9],"wall"],
                   [["line",p9,p10],"wall"],
                   [["line",p10,p1],"inlet"]] # in
+        geo.AddCircle((1, 0.2), r=0.2, leftdomain=0, rightdomain=1, bc="cyl", maxh=0.02)
         [geo.Append(c,bc=bc) for c,bc in curves]
     
     # rectangular obstructions (parallel)
