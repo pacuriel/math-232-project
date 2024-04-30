@@ -1,7 +1,6 @@
 from ngsolve import *
 from netgen.occ import *
 import netgen.gui
-import ngsolve.internal as ngsint
 from scipy.io import savemat
 from scipy.interpolate import griddata
 import numpy as np
@@ -13,11 +12,12 @@ from netgen.geom2d import SplineGeometry
 import matplotlib.pyplot as plt
 import pickle
 import os
+import imageio
+
 
 ##################
 ### READ/WRITE ###
 ##################
-#
 def writeDict(d, fileName):
   with open(fileName, 'wb') as o: #convert to gzip
     pickle.dump(d, o, protocol=pickle.HIGHEST_PROTOCOL)
@@ -123,7 +123,6 @@ def simFlow(maxh, domain_type, nu, tau, tend):
     res.data = f.vec - a.mat*gfu.vec
     gfu.vec.data += inv_stokes * res
 
-
     # matrix for implicit Euler 
     mstar = BilinearForm(X, symmetric=True)
     mstar += (u*v + tau*stokes)*dx
@@ -137,7 +136,7 @@ def simFlow(maxh, domain_type, nu, tau, tend):
     # for visualization
     Draw (Norm(gfu.components[0]), mesh, "velocity", sd=3)  # 0 for velocity, 1 for pressure
     ngsint.viewoptions.drawoutline=1 # disable triangle outline when plotting
-
+    # ngsint.VideoStart('snapshits\\test.mp4')
     # implicit Euler/explicit Euler splitting method:
     t = 0
     with TaskManager():
@@ -149,8 +148,10 @@ def simFlow(maxh, domain_type, nu, tau, tend):
             gfu.vec.data -= tau * inv * res    
 
             t = t + tau
-            
+            t_str = str(t)
+            # ngsint.VideoAddFrame()
             Redraw()
+            ngsint.SnapShot('snap_shits/test_' + t_str)
 
             #checking if last time step and obtaining solution
             if t >= tend:
@@ -164,6 +165,8 @@ def simFlow(maxh, domain_type, nu, tau, tend):
                     computed_soln[i] = gfu.components[0][0](curr_pt) #obtaining computed soln
                     true_soln[i] = (1.5*4*y_pt*(0.41-y_pt))/(0.41*0.41)
                     i = i + 1 #incrementing iterator
+
+        # ngsint.VideoFinalize()
 
     return gfu, mesh, computed_soln, true_soln
 
@@ -197,15 +200,16 @@ def main():
     # timestepping parameters
     tau = 0.001 #timestep
     tend = 5 #end time
-    domain_type = 'empty' # mesh
+    domain_type = 'base' # mesh
 
     ###trying to make convergence plot
-    base_maxh = 0.0175
-    maxh_vals = [(2**i)*base_maxh for i in range(0,6)]
+    # base_maxh = 0.0175
+    # maxh_vals = [(2**i)*base_maxh for i in range(0,6)]
+    maxh_vals = [0.07]
     errors = [] #used to store
     node_cts = []
 
-    if not os.path.exists('data\\data_dict.pickle'):
+    if not os.path.exists('data\\data_dict.pickle') or os.path.exists('data\\data_dict.pickle'):
         for maxh in maxh_vals:
             gfu, mesh, computed_soln, true_soln = simFlow(maxh, domain_type, nu, tau, tend)
 
@@ -222,6 +226,13 @@ def main():
         errors = data_dict['errors']
         node_cts = data_dict['node_cts']
         plotErrors(errors, maxh_vals, node_cts) #plotting errors
+
+
+    images = []
+    for filename in os.listdir('snap_shits/'):
+        images.append(imageio.imread('snap_shits\\' + filename))
+
+    imageio.mimsave('test.gif', images)
 
 if __name__ == "__main__":
     main()
